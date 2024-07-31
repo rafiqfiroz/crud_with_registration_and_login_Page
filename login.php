@@ -1,61 +1,44 @@
 <?php 
 session_start();
+include "authentication.php";
 include "config.php";
 
-if (isset($_SESSION['id']) && !empty($_SESSION['id'])) {
-    header('location:index.php');
-    exit;
-}
+if (isset($_POST['submit'])) {
+    $name = $_POST['name'];
+    $sex = $_POST['sex'];
+    $phone = $_POST['phone'];
+    $email = $_POST['email'];
+    $password = md5($_POST['password']); // Encrypt the password
+    $photo = $_FILES['photo'];
+    $photo_name = $photo['name'];
+    $photo_temp = $photo['tmp_name'];
 
-if (isset($_POST['login'])) {
-    $username = $_POST['username'];
-    $password = $_POST['password'];
-    $captcha_field = $_POST['captcha'];
+    // Move the uploaded photo to the 'uploads' directory
+    move_uploaded_file($photo_temp, 'uploads/' . $photo_name);
 
-    $sql = "SELECT * FROM login WHERE username='$username'";
+    // Insert data into the database
+    if (empty($photo_name)) {
+        $photo_name = 'avatar.png'; // Default photo if no photo is uploaded
+    }
+
+    $sql = "INSERT INTO users (name, sex, phone, email, password, image) VALUES ('$name', '$sex', '$phone', '$email', '$password', '$photo_name')";
     $query = mysqli_query($link, $sql);
 
-    if (mysqli_num_rows($query) == 1) {
-        $data = mysqli_fetch_assoc($query);
-        if (password_verify($password, $data['password'])) {
-            if ($captcha_field == $_SESSION['captcha']) {
-                unset($_SESSION['captcha']);
+    if ($query) {
+        $log = getHostByName($_SERVER['HTTP_HOST']) . ' - ' . date("F j, Y, g:i a") . PHP_EOL .
+            "Record created_" . time() . PHP_EOL .
+            "---------------------------------------" . PHP_EOL;
+        file_put_contents('logs/log_' . date("j-n-Y") . '.log', $log, FILE_APPEND);
 
-                $log = getHostByName($_SERVER['HTTP_HOST']) . ' - ' . date("F j, Y, g:i a") . PHP_EOL .
-                    "Login_" . time() . PHP_EOL .
-                    "---------------------------------------" . PHP_EOL;
-                file_put_contents('logs/log_' . date("j-n-Y") . '.log', $log, FILE_APPEND);
-
-                if (isset($_POST['remember_me'])) {
-                    setcookie('username', $username, time() + 24 * 60 * 60);
-                    setcookie('password', $password, time() + 24 * 60 * 60);
-                } else {
-                    setcookie('username', '');
-                    setcookie('password', '');
-                }
-
-                $_SESSION['id'] = $data['id'];
-                $_SESSION['name'] = $data['name'];
-                $_SESSION['timeout'] = time() + 1800;
-                $_SESSION['login_at'] = date('h:m:s a');
-                sleep(1);
-                header('location:index.php');
-                exit;
-            } else {
-                $_SESSION['error'] = 'Wrong captcha';
-            }
-        } else {
-            $_SESSION['error'] = 'Username or Password maybe wrong';
-        }
+        $_SESSION['success'] = "User registered successfully";
+        header('location:create.php'); // Redirect to create.php
+        exit;
     } else {
-        $_SESSION['error'] = 'Username or Password maybe wrong';
+        $_SESSION['error'] = "Something went wrong, Record not inserted";
+        header('location:create.php'); // Redirect to create.php even on error
+        exit;
     }
 }
-
-$captcha_array = array(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z');
-shuffle($captcha_array);
-$captcha_code = substr(implode('', $captcha_array), 0, 6);
-$_SESSION['captcha'] = $captcha_code;
 ?>
 
 <!DOCTYPE html>
@@ -64,89 +47,46 @@ $_SESSION['captcha'] = $captcha_code;
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register User</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <script src='https://kit.fontawesome.com/a076d05399.js' crossorigin='anonymous'></script>
-    <title>Login</title>
-    <style>
-        #login {
-            margin: 18% 30%;
-            border: 1px solid lightgray;
-            padding: 10px 20px 40px;
-            box-shadow: 2px 5px 5px 2px lightgray;
-        }
-    </style>
 </head>
 <body>
-<div class="container">
-  <div id="login">
-    <div class="mb-4"><h1 class="text-center">Login</h1></div>
-
-    <?php if (isset($_SESSION['error'])) { ?>
-        <div class="alert alert-danger"><?php echo $_SESSION['error']; unset($_SESSION['error']); ?></div>
-    <?php } ?>
-
-    <form action="" method="POST">
-        <div class="input-group mb-3">
-            <div class="input-group-prepend">
-                <span class="input-group-text"><i class='fas fa-user'></i></span>
+    <div class="container">
+        <h1 class="text-center">Register User</h1>
+        <form action="" method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="name"><strong>Name</strong></label>
+                <input type="text" class="form-control" placeholder="Enter full name" name="name" required>
             </div>
-            <input type="text" class="form-control" placeholder="Enter Username" id="username" name="username" value="<?php echo isset($_COOKIE['username']) ? $_COOKIE['username'] : '' ?>" required>
-        </div>
-
-        <div class="input-group mb-3">
-            <div class="input-group-prepend">
-                <span class="input-group-text"><i class='fas fa-key'></i></span>
+            <div class="form-group">
+                <label for="sex"><strong>Sex</strong></label><br>
+                <input type="radio" name="sex" value="male" required> Male &nbsp;
+                <input type="radio" name="sex" value="female" required> Female
             </div>
-            <input type="password" class="form-control" placeholder="Enter Password" id="password" name="password" value="<?php echo isset($_COOKIE['password']) ? $_COOKIE['password'] : '' ?>" required>
-            <div class="input-group-append">
-                <button type="button" class="input-group-text" onclick="passwordToggle()" id="toggle-btn"><i class='far fa-eye-slash'></i></button>
+            <div class="form-group">
+                <label for="phone"><strong>Phone</strong></label>
+                <input type="text" class="form-control" placeholder="Enter phone number" name="phone" required>
             </div>
-        </div>
-
-        <div class="input-group mb-3">
-            <div class="input-group-prepend">
-                <span class="input-group-text bg-dark text-white"><strong style="letter-spacing:2px"><?php echo $_SESSION['captcha'] ?></strong></span>
+            <div class="form-group">
+                <label for="email"><strong>Email</strong></label>
+                <input type="email" class="form-control" placeholder="Enter email" name="email" required>
             </div>
-            <input type="text" class="form-control" placeholder="Enter Captcha" id="captcha" name="captcha" required>
-        </div>
-
-        <div class="text-right mb-4">
-            <input type="checkbox" id="remember_me" name="remember_me" <?php echo isset($_COOKIE['username']) || isset($_COOKIE['password']) ? 'checked' : '' ?>> Remember me
-        </div>
-
-        <button type="submit" class="btn btn-primary btn-block" name="login">Login</button>
-        
-        <div class="text-center mt-3">
-            <a href="register.php" class="btn btn-secondary">Register</a>
-        </div>
-    </form>
-  </div>
-</div>
+            <div class="form-group">
+                <label for="password"><strong>Password</strong></label>
+                <input type="password" class="form-control" placeholder="Enter password" name="password" required>
+            </div>
+            <div class="form-group">
+                <label for="photo"><strong>Photo</strong></label><br>
+                <input type="file" name="photo">
+            </div>
+            <div class="text-center mt-5">
+                <button type="submit" class="btn btn-primary" name="submit">Submit</button>
+                <a href="index.php" class="btn btn-secondary">Back</a>
+            </div>
+        </form>
+    </div>
 </body>
 </html>
-<script type="text/javascript">
-    // Password visibility
-    function passwordToggle() {
-        var btn = document.getElementById('toggle-btn');
-        var pw = document.getElementById('password');
-
-        if (pw.type == 'password') {
-            pw.type = 'text';
-            btn.innerHTML = "<i class='far fa-eye'></i>";
-        } else {
-            pw.type = 'password';
-            btn.innerHTML = "<i class='far fa-eye-slash'></i>";
-        }
-    }
-
-    // Error message hide
-    setTimeout(function () {
-        var alert = document.getElementsByClassName('alert')[0];
-        if (alert) {
-            alert.style.display = 'none';
-        }
-    }, 3000);
-</script>
