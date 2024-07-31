@@ -14,13 +14,13 @@ if (isset($_POST['submit'])) {
     $photo_temp = $photo['tmp_name'];
 
     // Move the uploaded photo to the 'uploads' directory
-    move_uploaded_file($photo_temp, 'uploads/' . $photo_name);
-
-    // Insert data into the database
-    if (empty($photo_name)) {
+    if (!empty($photo_name)) {
+        move_uploaded_file($photo_temp, 'uploads/' . $photo_name);
+    } else {
         $photo_name = 'avatar.png'; // Default photo if no photo is uploaded
     }
 
+    // Insert data into the database
     $sql = "INSERT INTO users (name, sex, phone, email, password, image) VALUES ('$name', '$sex', '$phone', '$email', '$password', '$photo_name')";
     $query = mysqli_query($link, $sql);
 
@@ -31,11 +31,11 @@ if (isset($_POST['submit'])) {
         file_put_contents('logs/log_' . date("j-n-Y") . '.log', $log, FILE_APPEND);
 
         $_SESSION['success'] = "User registered successfully";
-        header('location:index.php');
+        header('location:create.php'); // Redirect to create.php to avoid loop
         exit;
     } else {
         $_SESSION['error'] = "Something went wrong, Record not inserted";
-        header('location:index.php');
+        header('location:create.php'); // Redirect to create.php to avoid loop
         exit;
     }
 }
