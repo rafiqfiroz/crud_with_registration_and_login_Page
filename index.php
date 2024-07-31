@@ -14,8 +14,11 @@ if ($page < 1) {
 }
 
 // Fetch user data with pagination
-$sql = "SELECT * FROM users LIMIT $limit OFFSET $offset";
-$query = mysqli_query($link, $sql);
+$sql = "SELECT * FROM users LIMIT ? OFFSET ?";
+$stmt = mysqli_prepare($link, $sql);
+mysqli_stmt_bind_param($stmt, "ii", $limit, $offset);
+mysqli_stmt_execute($stmt);
+$query = mysqli_stmt_get_result($stmt);
 
 if (!$query) {
     die('Query Error: ' . mysqli_error($link));
@@ -37,7 +40,7 @@ $total_page = ceil($total_record / $limit);
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User List</title>
     <!-- Bootstrap CSS -->
@@ -115,7 +118,7 @@ $total_page = ceil($total_record / $limit);
                             </td>
                             <td><?php echo htmlspecialchars($row['phone']); ?></td>
                             <td><?php echo htmlspecialchars($row['email']); ?></td>
-                            <td><img src="uploads/<?php echo htmlspecialchars($row['image']); ?>" width="100" height="125"></td>
+                            <td><img src="uploads/<?php echo htmlspecialchars($row['image']); ?>" width="100" height="125" alt="User Photo"></td>
                             <td>
                                 <a href="update.php?id=<?php echo urlencode($row['id']); ?>" class="text-dark"><i class='fas fa-edit'></i></a>&nbsp;&nbsp;
                                 <a href="delete.php?id=<?php echo urlencode($row['id']); ?>" class="text-dark"><i class='fas fa-trash'></i></a>
