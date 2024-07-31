@@ -1,8 +1,8 @@
 <<<<<<< HEAD
 === Login Detail ===
 
-Username: rafiq
-Password: Rafiq@123
+Username: admin
+Password: Admin@123
 =======
 # crud_with_registration_and_login_Page
 >>>>>>> 54f461bf464392cb4fa55f36a443feebf7e01045
